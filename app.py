@@ -1,8 +1,8 @@
-from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtCore import QSize, Qt, QRect
 from PyQt6.QtGui import QAction, QPixmap, QImage, QPalette
 from pathlib import Path
 from PyQt6.QtWidgets import QApplication, QWidget, QMainWindow, QPushButton, QLabel, QVBoxLayout, QHBoxLayout, QToolBar, \
-    QFileDialog, QScrollArea, QSizePolicy
+    QFileDialog, QScrollArea, QSizePolicy, QRubberBand
 
 # Only needed for access to command line arguments
 import sys
@@ -19,6 +19,8 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.original_pixmap = None
+        self.rubber_band = None
+        self.rubber_band_origin = None
 
         open_action = QAction("&Open", self)
         open_action.triggered.connect(self.open)
@@ -33,7 +35,7 @@ class MainWindow(QMainWindow):
         self.img_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.img_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
         self.img_label.setScaledContents(True)
-        self.img_label.setBackgroundRole(QPalette.ColorRole.Base)
+        self.img_label.setBackgroundRole(QPalette.ColorRole.Dark)
 
         toolbar = QToolBar("toolbar")
         toolbar.addAction(open_action)
@@ -44,7 +46,7 @@ class MainWindow(QMainWindow):
 
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidget(self.img_label)
-        self.scroll_area.setBackgroundRole(QPalette.ColorRole.Base)
+        self.scroll_area.setBackgroundRole(QPalette.ColorRole.Dark)
 
         self.setCentralWidget(self.scroll_area)
 
@@ -77,6 +79,20 @@ class MainWindow(QMainWindow):
 
     def zoom_out(self):
         self.resize(0.9)
+
+    def mousePressEvent(self, event):
+        self.rubber_band_origin = event.pos()
+        if not self.rubber_band:
+            self.rubber_band = QRubberBand(QRubberBand.Shape.Rectangle, self)
+        self.rubber_band.setGeometry(QRect(self.rubber_band_origin, QSize()))
+        self.rubber_band.show()
+
+    def mouseMoveEvent(self, event):
+        self.rubber_band.setGeometry(QRect(self.rubber_band_origin, event.pos()).normalized())
+
+    def mouseReleaseEvent(self, event):
+        self.rubber_band.hide()
+        print(QRect(self.rubber_band_origin, event.pos()).normalized().intersects(self.img_label.pixmap().rect()))
 
 
 window = MainWindow()
